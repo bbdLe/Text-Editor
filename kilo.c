@@ -16,8 +16,9 @@ void EnableRawModel()
     tcgetattr(STDIN_FILENO, &orig_termios);
     atexit(DisableRawModel);
     struct termios raw = orig_termios;
-    raw.c_iflag &= ~(IXON | ICRNL);
+    raw.c_iflag &= ~(BRKINT | INPCK | ISTRIP | IXON | ICRNL);
     raw.c_oflag &= ~(OPOST);
+    raw.c_cflag &= (CS8);
     raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
