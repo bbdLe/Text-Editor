@@ -3,17 +3,30 @@
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
+#include <errno.h>
 
 struct termios orig_termios;
 
+void Die(const char* s)
+{
+    perror(s);
+    exit(1);
+}
+
 void DisableRawModel()
 {
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
+    {
+        Die("tcsetattr");
+    }
 }
 
 void EnableRawModel()
 {
-    tcgetattr(STDIN_FILENO, &orig_termios);
+    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
+    {
+        Die("tcsgetattr");
+    }
     atexit(DisableRawModel);
     struct termios raw = orig_termios;
     raw.c_iflag &= ~(BRKINT | INPCK | ISTRIP | IXON | ICRNL);
@@ -22,7 +35,10 @@ void EnableRawModel()
     raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
     raw.c_cc[VMIN] = 0;
     raw.c_cc[VTIME] = 1;
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1)
+    {
+        Die("tcsetattr");
+    }
 }
 
 int main()
@@ -31,7 +47,10 @@ int main()
     while (1)
     {
         char c = '\0';
-        read(STDIN_FILENO, &c, 1);
+        if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN)
+        {
+            Die("read");
+        }
 
         if (iscntrl(c))
         {
