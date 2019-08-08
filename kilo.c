@@ -68,11 +68,17 @@ void EditorProcessKey()
     }
 }
 
+void EditorRefreshScreen()
+{
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+}
+
 int main()
 {
     EnableRawModel();
     while (1)
     {
+        EditorRefreshScreen();
         EditorProcessKey();
     }
     return 0;
