@@ -7,7 +7,12 @@
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
-struct termios orig_termios;
+struct EditorConfig
+{
+    struct termios orig_termios;
+};
+
+struct EditorConfig E;
 
 void Die(const char* s)
 {
@@ -20,7 +25,7 @@ void Die(const char* s)
 
 void DisableRawModel()
 {
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1)
     {
         Die("tcsetattr");
     }
@@ -28,12 +33,12 @@ void DisableRawModel()
 
 void EnableRawModel()
 {
-    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
+    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1)
     {
         Die("tcsgetattr");
     }
     atexit(DisableRawModel);
-    struct termios raw = orig_termios;
+    struct termios raw = E.orig_termios;
     raw.c_iflag &= ~(BRKINT | INPCK | ISTRIP | IXON | ICRNL);
     raw.c_oflag &= ~(OPOST);
     raw.c_cflag &= (CS8);
