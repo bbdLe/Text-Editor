@@ -116,6 +116,7 @@ void EditorDrawRows(struct ABuf* aBuf)
     {
         AbAppend(aBuf, "~", 1);
 
+        AbAppend(aBuf, "\x1b[K", 3);
         if (y < E.screenrows - 1)
         {
             AbAppend(aBuf, "\r\n", 2);
@@ -127,10 +128,11 @@ void EditorRefreshScreen()
 {
     struct ABuf aBuf = ABUF_INIT;
 
-    AbAppend(&aBuf, "\x1b[2J", 4);
+    AbAppend(&aBuf, "\x1b[?25l", 6);
     AbAppend(&aBuf, "\x1b[H", 3);
     EditorDrawRows(&aBuf);
     AbAppend(&aBuf, "\x1b[H", 3);
+    AbAppend(&aBuf, "\x1b[?25h", 6);
     write(STDOUT_FILENO, aBuf.b, aBuf.len);
     AbFree(&aBuf);
 }
