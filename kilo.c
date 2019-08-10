@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <string.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -16,6 +17,32 @@ struct EditorConfig
 };
 
 struct EditorConfig E;
+
+struct ABuf
+{
+    char* b;
+    int len;
+};
+
+#define ABUF_INIT {NULL, 0}
+
+void AbAppend(struct ABuf* ab, const char* s, int len)
+{
+    char* newBuf = (char*)(realloc(ab->b, ab->len + len));
+
+    if (newBuf == NULL)
+    {
+        return;
+    }
+    memcpy(&newBuf[ab->len], s, len);
+    ab->b = newBuf;
+    ab->len += len;
+}
+
+void AbFree(struct ABuf* ab)
+{
+    free(ab->b);
+}
 
 void Die(const char* s)
 {
@@ -81,28 +108,31 @@ void EditorProcessKey()
     }
 }
 
-void EditorDrawRows()
+void EditorDrawRows(struct ABuf* aBuf)
 {
     int y;
 
     for (y = 0; y < E.screenrows; ++y)
     {
-        write(STDOUT_FILENO, "~", 1);
+        AbAppend(aBuf, "~", 1);
 
         if (y < E.screenrows - 1)
         {
-            write(STDOUT_FILENO, "\r\n", 2);
+            AbAppend(aBuf, "\r\n", 2);
         }
     }
 }
 
 void EditorRefreshScreen()
 {
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    struct ABuf aBuf = ABUF_INIT;
 
-    EditorDrawRows();
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    AbAppend(&aBuf, "\x1b[2J", 4);
+    AbAppend(&aBuf, "\x1b[H", 3);
+    EditorDrawRows(&aBuf);
+    AbAppend(&aBuf, "\x1b[H", 3);
+    write(STDOUT_FILENO, aBuf.b, aBuf.len);
+    AbFree(&aBuf);
 }
 
 int GetCursorPosition(int* rows, int* cols)
