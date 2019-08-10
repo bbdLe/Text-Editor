@@ -8,6 +8,7 @@
 #include <string.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
+#define KILO_VERSION "0.0.1"
 
 struct EditorConfig
 {
@@ -114,7 +115,22 @@ void EditorDrawRows(struct ABuf* aBuf)
 
     for (y = 0; y < E.screenrows; ++y)
     {
-        AbAppend(aBuf, "~", 1);
+        if (y == E.screenrows / 3)
+        {
+            char welcome[80];
+
+            int welcomelen = snprintf(welcome, sizeof(welcome), "Kilo editor -- version %s", KILO_VERSION);
+            if (welcomelen > E.screencols)
+            {
+                welcomelen = E.screencols;
+            }
+
+            AbAppend(aBuf, welcome, welcomelen);
+        }
+        else
+        {
+            AbAppend(aBuf, "~", 1);
+        }
 
         AbAppend(aBuf, "\x1b[K", 3);
         if (y < E.screenrows - 1)
