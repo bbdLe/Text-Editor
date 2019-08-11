@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <string.h>
+#include <sys/types.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define KILO_VERSION "0.0.1"
@@ -382,6 +383,18 @@ int GetWindowSize(int* rows, int* cols)
     }
 }
 
+void EditorOpen()
+{
+    const char* line = "Hello, World!";
+    ssize_t linelen = 13;
+
+    E.row.size = linelen;
+    E.row.chars = (char*)malloc(linelen + 1);
+    memcpy(E.row.chars, line, linelen);
+    E.row.chars[linelen] = '\0';
+    E.numrows = 1;
+}
+
 void InitEditor()
 {
     E.cx = 0;
@@ -398,6 +411,7 @@ int main()
 {
     EnableRawModel();
     InitEditor();
+    EditorOpen();
 
     while (1)
     {
