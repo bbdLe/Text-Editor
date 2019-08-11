@@ -9,6 +9,15 @@
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define KILO_VERSION "0.0.1"
+#define ABUF_INIT {NULL, 0}
+
+enum EditorKey
+{
+    ARROW_LEFT = 'a',
+    ARROW_RIGHT = 'd',
+    ARROW_UP = 'w',
+    ARROW_DOWN = 's',
+};
 
 struct EditorConfig
 {
@@ -26,8 +35,6 @@ struct ABuf
     char* b;
     int len;
 };
-
-#define ABUF_INIT {NULL, 0}
 
 void AbAppend(struct ABuf* ab, const char* s, int len)
 {
@@ -113,13 +120,13 @@ char EditorReadKey()
             switch (seq[1])
             {
                 case 'A':
-                    return 'w';
+                    return ARROW_UP;
                 case 'B':
-                    return 's';
+                    return ARROW_DOWN;
                 case 'C':
-                    return 'd';
+                    return ARROW_RIGHT;
                 case 'D':
-                    return 'a';
+                    return ARROW_LEFT;
             }
         }
 
@@ -135,16 +142,16 @@ void EditorMoveKey(char key)
 {
     switch(key)
     {
-        case 'a':
-            E.cx -= 1;
-            break;
-        case 'd':
+        case ARROW_LEFT: 
+            E.cx -= 1; 
+            break; 
+        case ARROW_RIGHT:
             E.cx += 1;
             break;
-        case 'w':
+        case ARROW_UP: 
             E.cy -= 1;
             break;
-        case 's':
+        case ARROW_DOWN:
             E.cy += 1;
             break;
     }
