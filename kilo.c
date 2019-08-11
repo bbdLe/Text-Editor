@@ -143,16 +143,28 @@ void EditorMoveKey(int key)
     switch(key)
     {
         case ARROW_LEFT: 
-            E.cx -= 1; 
+            if (E.cx != 0)
+            {
+                E.cx -= 1; 
+            }
             break; 
         case ARROW_RIGHT:
-            E.cx += 1;
+            if (E.cx != E.screencols - 1)
+            {
+                E.cx += 1;
+            }
             break;
         case ARROW_UP: 
-            E.cy -= 1;
+            if (E.cy != 0)
+            {
+                E.cy -= 1;
+            }
             break;
         case ARROW_DOWN:
-            E.cy += 1;
+            if (E.cy != E.screenrows - 1)
+            {
+                E.cy += 1;
+            }
             break;
     }
 }
