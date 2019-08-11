@@ -13,10 +13,10 @@
 
 enum EditorKey
 {
-    ARROW_LEFT = 'a',
-    ARROW_RIGHT = 'd',
-    ARROW_UP = 'w',
-    ARROW_DOWN = 's',
+    ARROW_LEFT = 1000,
+    ARROW_RIGHT,
+    ARROW_UP,
+    ARROW_DOWN,
 };
 
 struct EditorConfig
@@ -91,7 +91,7 @@ void EnableRawModel()
     }
 }
 
-char EditorReadKey()
+int EditorReadKey()
 {
     int nread;
     char c;
@@ -138,7 +138,7 @@ char EditorReadKey()
     }
 }
 
-void EditorMoveKey(char key)
+void EditorMoveKey(int key)
 {
     switch(key)
     {
@@ -159,7 +159,7 @@ void EditorMoveKey(char key)
 
 void EditorProcessKey()
 {
-    char c = EditorReadKey();
+    int c = EditorReadKey();
 
     switch (c)
     {
@@ -168,10 +168,10 @@ void EditorProcessKey()
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
-        case 'w':
-        case 's':
-        case 'a':
-        case 'd':
+        case ARROW_UP: 
+        case ARROW_DOWN: 
+        case ARROW_LEFT: 
+        case ARROW_RIGHT: 
             EditorMoveKey(c);
             break;
     }
