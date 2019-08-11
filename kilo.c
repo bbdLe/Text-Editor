@@ -269,33 +269,45 @@ void EditorDrawRows(struct ABuf* aBuf)
 
     for (y = 0; y < E.screenrows; ++y)
     {
-        if (y == E.screenrows / 3)
+        if (y >= E.numrows)
         {
-            char welcome[80];
-
-            int welcomelen = snprintf(welcome, sizeof(welcome), "Kilo editor -- version %s", KILO_VERSION);
-            if (welcomelen > E.screencols)
+            if (y == E.screenrows / 3)
             {
-                welcomelen = E.screencols;
-            }
+                char welcome[80];
 
-            int padding = (E.screencols - welcomelen) / 2;
-            if (padding)
+                int welcomelen = snprintf(welcome, sizeof(welcome), "Kilo editor -- version %s", KILO_VERSION);
+                if (welcomelen > E.screencols)
+                {
+                    welcomelen = E.screencols;
+                }
+
+                int padding = (E.screencols - welcomelen) / 2;
+                if (padding)
+                {
+                    AbAppend(aBuf, "~", 1);
+                    --padding;
+                }
+
+                while (padding--)
+                {
+                    AbAppend(aBuf, " ", 1);
+                }
+
+                AbAppend(aBuf, welcome, welcomelen);
+            }
+            else
             {
                 AbAppend(aBuf, "~", 1);
-                --padding;
             }
-
-            while (padding--)
-            {
-                AbAppend(aBuf, " ", 1);
-            }
-
-            AbAppend(aBuf, welcome, welcomelen);
         }
         else
         {
-            AbAppend(aBuf, "~", 1);
+            int len = E.row.size;
+            if (len > E.screencols)
+            {
+                len = E.screencols;
+            }
+            AbAppend(aBuf, E.row.chars, len);
         }
 
         AbAppend(aBuf, "\x1b[K", 3);
