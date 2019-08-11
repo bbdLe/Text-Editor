@@ -97,6 +97,25 @@ char EditorReadKey()
     return c;
 }
 
+void EditorMoveKey(char key)
+{
+    switch(key)
+    {
+        case 'a':
+            E.cx -= 1;
+            break;
+        case 'd':
+            E.cx += 1;
+            break;
+        case 'w':
+            E.cy -= 1;
+            break;
+        case 's':
+            E.cy += 1;
+            break;
+    }
+}
+
 void EditorProcessKey()
 {
     char c = EditorReadKey();
@@ -107,6 +126,12 @@ void EditorProcessKey()
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
+            break;
+        case 'w':
+        case 's':
+        case 'a':
+        case 'd':
+            EditorMoveKey(c);
             break;
     }
 }
