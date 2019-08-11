@@ -275,7 +275,7 @@ void EditorDrawRows(struct ABuf* aBuf)
     {
         if (y >= E.numrows)
         {
-            if (y == E.screenrows / 3)
+            if (E.numrows == 0 && y == E.screenrows / 3)
             {
                 char welcome[80];
 
