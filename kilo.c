@@ -15,6 +15,7 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define KILO_VERSION "0.0.1"
 #define ABUF_INIT {NULL, 0}
+#define KILO_TAB_STOP 8
 
 enum EditorKey
 {
@@ -464,7 +465,7 @@ void EditorUpdateRow(ERow* row)
     }
 
     free(row->render);
-    row->render = (char*)malloc(row->size + tabs * 7 + 1);
+    row->render = (char*)malloc(row->size + tabs * (KILO_TAB_STOP - 1) + 1);
 
     int idx = 0;
     for (int j = 0; j < row->size; ++j)
@@ -472,7 +473,7 @@ void EditorUpdateRow(ERow* row)
         if (row->chars[j] == '\t')
         {
             row->render[idx++] = ' ';
-            while (idx % 8 != 0)
+            while (idx % KILO_TAB_STOP != 0)
             {
                 row->render[idx++] = ' ';
             }
