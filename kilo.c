@@ -204,6 +204,8 @@ int EditorReadKey()
 
 void EditorMoveKey(int key)
 {
+    ERow* row = (E.cy >= E.numrows)? NULL : &E.row[E.cy];
+
     switch(key)
     {
         case ARROW_LEFT: 
@@ -213,7 +215,10 @@ void EditorMoveKey(int key)
             }
             break; 
         case ARROW_RIGHT:
-            E.cx += 1;
+            if (row && row->size > E.cx)
+            {
+                E.cx += 1;
+            }
             break;
         case ARROW_UP: 
             if (E.cy != 0)
@@ -227,6 +232,13 @@ void EditorMoveKey(int key)
                 E.cy += 1;
             }
             break;
+    }
+
+    row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
+    int rowlen = row ? row->size : 0;
+    if (E.cx > rowlen)
+    {
+        E.cx = rowlen;
     }
 }
 
