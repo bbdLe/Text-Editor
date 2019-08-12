@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <stdarg.h>
+#include <fcntl.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define KILO_VERSION "0.0.1"
@@ -21,6 +22,7 @@
 
 enum EditorKey
 {
+    BACKSPACE = 127,
     ARROW_LEFT = 1000,
     ARROW_RIGHT,
     ARROW_UP,
@@ -118,6 +120,49 @@ void EnableRawModel()
     {
         Die("tcsetattr");
     }
+}
+
+char* EditorRowsToString(int* bufLen)
+{
+    int totlen = 0;
+    for (int i = 0; i < E.numrows; ++i)
+    {
+        totlen += E.row[i].size + 1;
+    }
+
+    if (bufLen)
+    {
+        *bufLen = totlen;
+    }
+
+    char* buf = (char*)malloc(totlen);
+    char* p = buf;
+    for (int i = 0; i < E.numrows; ++i)
+    {
+        memcpy(p, E.row[i].chars, E.row[i].size);
+        p += E.row[i].size;
+        *p = '\n';
+        ++p;
+    }
+
+    return buf;
+}
+
+void EditorSave()
+{
+    if (E.filename == NULL)
+    {
+        return;
+    }
+
+    int len;
+    char* buf = EditorRowsToString(&len);
+
+    int fd = open(E.filename, O_RDWR | O_CREAT, 0644);
+    ftruncate(fd, len);
+    write(fd, buf, len);
+    close(fd);
+    free(buf);
 }
 
 int EditorReadKey()
@@ -261,16 +306,96 @@ void EditorMoveKey(int key)
     }
 }
 
+void EditorUpdateRow(ERow* row)
+{
+    int tabs = 0;
+    for (int j = 0; j < row->size; ++j)
+    {
+        if (row->chars[j] == '\t')
+        {
+            tabs += 1;
+        }
+    }
+
+    free(row->render);
+    row->render = (char*)malloc(row->size + tabs * (KILO_TAB_STOP - 1) + 1);
+
+    int idx = 0;
+    for (int j = 0; j < row->size; ++j)
+    {
+        if (row->chars[j] == '\t')
+        {
+            row->render[idx++] = ' ';
+            while (idx % KILO_TAB_STOP != 0)
+            {
+                row->render[idx++] = ' ';
+            }
+        }
+        else
+        {
+            row->render[idx++] = row->chars[j];
+        }
+    }
+    row->render[idx] = '\0';
+    row->rsize = idx;
+}
+
+void EditorAppendRow(char* s, size_t len)
+{
+    E.row = (ERow*)realloc(E.row, sizeof(ERow) * (E.numrows + 1));
+
+    E.row[E.numrows].size = len;
+    E.row[E.numrows].chars = (char*)malloc(len + 1);
+    memcpy(E.row[E.numrows].chars, s, len);
+    E.row[E.numrows].chars[len] = '\0';
+
+    E.row[E.numrows].rsize = 0;
+    E.row[E.numrows].render = NULL;
+    EditorUpdateRow(&E.row[E.numrows]);
+
+    E.numrows += 1;
+}
+
+void EditorRowInsertChar(ERow* row, int at, int c)
+{
+    if (at < 0 || at > row->size)
+    {
+        at = row->size;
+    }
+
+    row->chars = (char*)realloc(row->chars, row->size + 2);
+    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+    row->size += 1;
+    row->chars[at] = c;
+    EditorUpdateRow(row);
+}
+
+void EditorInsertChar(int c)
+{
+    if (E.cy == E.numrows)
+    {
+        EditorAppendRow("", 0);
+    }
+
+    EditorRowInsertChar(&E.row[E.cy], E.cx, c);
+    E.cx += 1;
+}
+
 void EditorProcessKey()
 {
     int c = EditorReadKey();
 
     switch (c)
     {
+        case '\r':
+            break;
         case CTRL_KEY('q'):
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
+            break;
+        case CTRL_KEY('s'):
+            EditorSave();
             break;
         case HOME_KEY:
             E.cx = 0;
@@ -308,6 +433,18 @@ void EditorProcessKey()
         case ARROW_LEFT: 
         case ARROW_RIGHT: 
             EditorMoveKey(c);
+            break;
+            
+        case BACKSPACE:
+        case CTRL_KEY('h'):
+        case DEL_KEY:
+            break;
+
+        case CTRL_KEY('l'):
+        case '\x1b':
+            break;
+        default:
+            EditorInsertChar(c);
             break;
     }
 }
@@ -540,56 +677,6 @@ int GetWindowSize(int* rows, int* cols)
         *rows = ws.ws_row;
         return 0;
     }
-}
-
-void EditorUpdateRow(ERow* row)
-{
-    int tabs = 0;
-    for (int j = 0; j < row->size; ++j)
-    {
-        if (row->chars[j] == '\t')
-        {
-            tabs += 1;
-        }
-    }
-
-    free(row->render);
-    row->render = (char*)malloc(row->size + tabs * (KILO_TAB_STOP - 1) + 1);
-
-    int idx = 0;
-    for (int j = 0; j < row->size; ++j)
-    {
-        if (row->chars[j] == '\t')
-        {
-            row->render[idx++] = ' ';
-            while (idx % KILO_TAB_STOP != 0)
-            {
-                row->render[idx++] = ' ';
-            }
-        }
-        else
-        {
-            row->render[idx++] = row->chars[j];
-        }
-    }
-    row->render[idx] = '\0';
-    row->rsize = idx;
-}
-
-void EditorAppendRow(char* s, size_t len)
-{
-    E.row = (ERow*)realloc(E.row, sizeof(ERow) * (E.numrows + 1));
-
-    E.row[E.numrows].size = len;
-    E.row[E.numrows].chars = (char*)malloc(len + 1);
-    memcpy(E.row[E.numrows].chars, s, len);
-    E.row[E.numrows].chars[len] = '\0';
-
-    E.row[E.numrows].rsize = 0;
-    E.row[E.numrows].render = NULL;
-    EditorUpdateRow(&E.row[E.numrows]);
-
-    E.numrows += 1;
 }
 
 void EditorOpen(const char* filename)
