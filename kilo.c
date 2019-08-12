@@ -421,11 +421,23 @@ void EditorDrawStatusBar(struct ABuf* ab)
     {       
         len = E.screencols;
     }
+
+    char rstatus[80];
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", E.cy + 1, E.numrows);
     AbAppend(ab, status, len);
+
     while (len < E.screencols)
     {
-        AbAppend(ab, " ", 1);
-        len += 1;
+        if (E.screencols - len == rlen)
+        {
+            AbAppend(ab, rstatus, rlen);
+            break;
+        }
+        else
+        {
+            AbAppend(ab, " ", 1);
+            len += 1;
+        }
     }
     AbAppend(ab, "\x1b[m", 3);
 }
