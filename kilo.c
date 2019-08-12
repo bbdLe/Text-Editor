@@ -330,7 +330,7 @@ void EditorDrawRows(struct ABuf* aBuf)
         }
         else
         {
-            int len = E.row[filerow].size - E.coloff;
+            int len = E.row[filerow].rsize - E.coloff;
             if (len < 0)
             {
                 len = 0;
@@ -339,7 +339,7 @@ void EditorDrawRows(struct ABuf* aBuf)
             {
                 len = E.screencols;
             }
-            AbAppend(aBuf, &E.row[filerow].chars[E.coloff], len);
+            AbAppend(aBuf, &E.row[filerow].render[E.coloff], len);
         }
 
         AbAppend(aBuf, "\x1b[K", 3);
@@ -454,13 +454,33 @@ int GetWindowSize(int* rows, int* cols)
 
 void EditorUpdateRow(ERow* row)
 {
+    int tabs = 0;
+    for (int j = 0; j < row->size; ++j)
+    {
+        if (row->chars[j] == '\t')
+        {
+            tabs += 1;
+        }
+    }
+
     free(row->render);
-    row->render = (char*)malloc(row->size + 1);
+    row->render = (char*)malloc(row->size + tabs * 7 + 1);
 
     int idx = 0;
     for (int j = 0; j < row->size; ++j)
     {
-        row->render[idx++] = row->chars[j];
+        if (row->chars[j] == '\t')
+        {
+            row->render[idx++] = ' ';
+            while (idx % 8 != 0)
+            {
+                row->render[idx++] = ' ';
+            }
+        }
+        else
+        {
+            row->render[idx++] = row->chars[j];
+        }
     }
     row->render[idx] = '\0';
     row->rsize = idx;
