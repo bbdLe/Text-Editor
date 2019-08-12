@@ -276,6 +276,18 @@ void EditorProcessKey()
         case PAGE_UP:
         case PAGE_DOWN:
         {
+            if (c == PAGE_UP)
+            {
+                E.cy = E.rowoff;
+            }
+            else if (c == PAGE_DOWN)
+            {
+                E.cy = E.rowoff + E.screenrows - 1;
+                if (E.cy > E.numrows)
+                {
+                    E.cy  = E.numrows;
+                }
+            }
             int iTimes = E.screenrows;
             while(--iTimes)
             {
