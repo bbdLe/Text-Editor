@@ -42,7 +42,7 @@ struct EditorConfig
     int screenrows;
     int screencols;
     int numrows;
-    ERow row;
+    ERow* row;
     struct termios orig_termios;
 };
 
@@ -306,12 +306,12 @@ void EditorDrawRows(struct ABuf* aBuf)
         }
         else
         {
-            int len = E.row.size;
+            int len = E.row[y].size;
             if (len > E.screencols)
             {
                 len = E.screencols;
             }
-            AbAppend(aBuf, E.row.chars, len);
+            AbAppend(aBuf, E.row[y].chars, len);
         }
 
         AbAppend(aBuf, "\x1b[K", 3);
@@ -399,6 +399,18 @@ int GetWindowSize(int* rows, int* cols)
     }
 }
 
+void EditorAppendRow(char* s, size_t len)
+{
+    E.row = (ERow*)realloc(E.row, sizeof(ERow) * (E.numrows + 1));
+
+    E.row[E.numrows].size = len;
+    
+    E.row[E.numrows].chars = (char*)malloc(len + 1);
+    memcpy(E.row[E.numrows].chars, s, len);
+    E.row[E.numrows].chars[len] = '\0';
+    E.numrows += 1;
+}
+
 void EditorOpen(const char* filename)
 {
     FILE* fp = fopen(filename, "r");
@@ -412,18 +424,13 @@ void EditorOpen(const char* filename)
     size_t linecap = 0;
     ssize_t linelen;
 
-    linelen = getline(&line, &linecap, fp);
-    if (linelen != -1)
+    while((linelen = getline(&line, &linecap, fp)) != -1)
     {
         while(linelen > 0 && (line[linelen - 1] == '\r' || line[linelen - 1] == '\n'))
         {
             linelen -= 1;
         }
-        E.row.size = linelen;
-        E.row.chars = (char*)malloc(linelen + 1);
-        memcpy(E.row.chars, line, linelen);
-        E.row.chars[linelen] = '\0';
-        E.numrows = 1;
+        EditorAppendRow(line, linelen);
     }
     free(line);
     fclose(fp);
@@ -434,6 +441,7 @@ void InitEditor()
     E.cx = 0;
     E.cy = 0;
     E.numrows = 0;
+    E.row = NULL;
 
     if (GetWindowSize(&E.screenrows, &E.screencols) == -1)
     {
