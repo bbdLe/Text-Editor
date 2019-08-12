@@ -213,6 +213,11 @@ void EditorMoveKey(int key)
             {
                 E.cx -= 1; 
             }
+            else if (E.cy != 0)
+            {
+                E.cy -= 1;
+                E.cx = E.row[E.cy].size;
+            }
             break; 
         case ARROW_RIGHT:
             if (row && row->size > E.cx)
