@@ -159,9 +159,20 @@ void EditorSave()
     char* buf = EditorRowsToString(&len);
 
     int fd = open(E.filename, O_RDWR | O_CREAT, 0644);
-    ftruncate(fd, len);
-    write(fd, buf, len);
-    close(fd);
+    if (fd != 0)
+    {
+        if (ftruncate(fd, len) != -1)
+        {
+            if (write(fd, buf, len) == len)
+            {
+                close(fd);
+                free(buf);
+                return;
+            }
+        }
+        close(fd);
+    }
+
     free(buf);
 }
 
