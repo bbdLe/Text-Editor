@@ -122,6 +122,15 @@ void EnableRawModel()
     }
 }
 
+void EditorSetStatusMessage(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
+    va_end(ap);
+    E.statusmsg_time = time(NULL);
+}
+
 char* EditorRowsToString(int* bufLen)
 {
     int totlen = 0;
@@ -167,6 +176,7 @@ void EditorSave()
             {
                 close(fd);
                 free(buf);
+                EditorSetStatusMessage("%d bytes written to disk", len);
                 return;
             }
         }
@@ -174,6 +184,7 @@ void EditorSave()
     }
 
     free(buf);
+    EditorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
 int EditorReadKey()
@@ -738,14 +749,6 @@ void InitEditor()
     E.screenrows -= 2;
 }
 
-void EditorSetStatusMessage(const char* fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
-    va_end(ap);
-    E.statusmsg_time = time(NULL);
-}
 
 int main(int argc, char** argv)
 {
@@ -756,7 +759,7 @@ int main(int argc, char** argv)
         EditorOpen(argv[1]);
     }
 
-    EditorSetStatusMessage("HELO: CTRL-Q = quit");
+    EditorSetStatusMessage("HELO: CTRL-Q = quit | CTRL-S = save");
 
     while (1)
     {
