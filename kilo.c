@@ -11,6 +11,8 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
+#include <stdarg.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define KILO_VERSION "0.0.1"
@@ -50,6 +52,8 @@ struct EditorConfig
     int numrows;
     ERow* row;
     char* filename;
+    char statusmsg[80];
+    time_t statusmsg_time;
     struct termios orig_termios;
 };
 
@@ -440,6 +444,21 @@ void EditorDrawStatusBar(struct ABuf* ab)
         }
     }
     AbAppend(ab, "\x1b[m", 3);
+    AbAppend(ab, "\r\n", 2);
+}
+
+void EditorDrawMessageBar(struct ABuf* ab)
+{
+    AbAppend(ab, "\x1b[K", 3);
+    int msglen = strlen(E.statusmsg);
+    if (msglen > E.screencols)
+    {
+        msglen = E.screencols;
+    }
+    if (msglen && time(NULL) - E.statusmsg_time < 5)
+    {
+        AbAppend(ab, E.statusmsg, msglen);
+    }
 }
 
 void EditorRefreshScreen()
@@ -453,6 +472,7 @@ void EditorRefreshScreen()
 
     EditorDrawRows(&aBuf);
     EditorDrawStatusBar(&aBuf);
+    EditorDrawMessageBar(&aBuf);
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy - E.rowoff + 1, E.rx - E.coloff + 1);
@@ -610,12 +630,23 @@ void InitEditor()
     E.numrows = 0;
     E.row = NULL;
     E.filename = NULL;
+    E.statusmsg[0] = '\0';
+    E.statusmsg_time = 0;
 
     if (GetWindowSize(&E.screenrows, &E.screencols) == -1)
     {
         Die("get windows size");
     }
-    E.screenrows -= 1;
+    E.screenrows -= 2;
+}
+
+void EditorSetStatusMessage(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
+    va_end(ap);
+    E.statusmsg_time = time(NULL);
 }
 
 int main(int argc, char** argv)
@@ -626,6 +657,8 @@ int main(int argc, char** argv)
     {
         EditorOpen(argv[1]);
     }
+
+    EditorSetStatusMessage("HELO: CTRL-Q = quit");
 
     while (1)
     {
