@@ -186,26 +186,23 @@ void EditorFindCallback(char* query, int key)
 
 void EditorFind()
 {
+    int saved_cx = E.cx;
+    int saved_cy = E.cy;
+    int saved_coloff = E.coloff;
+    int saved_rowoff = E.rowoff;
+
     char* query = EditorPrompt("Search %s (ESC to cancel", EditorFindCallback);
     if (query == NULL)
     {
-        return;
+        E.cx = saved_cx;
+        E.cy = saved_cy;
+        E.coloff = saved_coloff;
+        E.rowoff = saved_rowoff;
     }
-
-    for (int i = 0; i < E.numrows; ++i)
+    else
     {
-        ERow* row = &E.row[i];
-        char* match = strstr(row->render, query);
-        if (match)
-        {
-            E.cy = i;
-            E.cx = EditorRowRxToCx(row, match - row->render);
-            E.rowoff = E.numrows;
-            break;
-        }
+        free(query);
     }
-
-    free(query);
 }
 
 void EditorSave()
@@ -604,7 +601,6 @@ char* EditorPrompt(char* prompt, void (*callback)(char*, int))
                 buf[--buflen] = '\0';
             }
         }
-
 
         if (callback)
         {
