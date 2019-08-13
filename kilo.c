@@ -19,6 +19,7 @@
 #define KILO_VERSION "0.0.1"
 #define ABUF_INIT {NULL, 0}
 #define KILO_TAB_STOP 8
+#define KILO_QUIT_TIMES 3
 
 enum EditorKey
 {
@@ -55,6 +56,7 @@ struct EditorConfig
     ERow* row;
     char* filename;
     char statusmsg[80];
+    char dirty;
     time_t statusmsg_time;
     struct termios orig_termios;
 };
@@ -174,9 +176,11 @@ void EditorSave()
         {
             if (write(fd, buf, len) == len)
             {
+                E.dirty = 0;
                 close(fd);
                 free(buf);
                 EditorSetStatusMessage("%d bytes written to disk", len);
+                E.dirty = 0;
                 return;
             }
         }
@@ -376,6 +380,7 @@ void EditorAppendRow(char* s, size_t len)
     EditorUpdateRow(&E.row[E.numrows]);
 
     E.numrows += 1;
+    E.dirty += 1;
 }
 
 void EditorRowInsertChar(ERow* row, int at, int c)
@@ -390,6 +395,7 @@ void EditorRowInsertChar(ERow* row, int at, int c)
     row->size += 1;
     row->chars[at] = c;
     EditorUpdateRow(row);
+    E.dirty += 1;
 }
 
 void EditorInsertChar(int c)
@@ -405,6 +411,7 @@ void EditorInsertChar(int c)
 
 void EditorProcessKey()
 {
+    static int quit_times = KILO_QUIT_TIMES; 
     int c = EditorReadKey();
 
     switch (c)
@@ -412,6 +419,13 @@ void EditorProcessKey()
         case '\r':
             break;
         case CTRL_KEY('q'):
+            if (E.dirty && quit_times > 0)
+            {
+                EditorSetStatusMessage("WARNNING!! File has unsaved change."
+                "Press Ctrl-Q %d more times to quit.", quit_times);
+                quit_times -= 1;
+                return;
+            }
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
@@ -469,6 +483,8 @@ void EditorProcessKey()
             EditorInsertChar(c);
             break;
     }
+
+    quit_times = KILO_QUIT_TIMES;
 }
 
 void EditorDrawRows(struct ABuf* aBuf)
@@ -578,8 +594,8 @@ void EditorDrawStatusBar(struct ABuf* ab)
     AbAppend(ab, "\x1b[7m", 4);
     
     char status[80];
-    int len = snprintf(status, sizeof(status), "%.20s - %d lines", E.filename ? E.filename : "[No Name]",
-            E.numrows);
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines %s", E.filename ? E.filename : "[No Name]",
+            E.numrows, E.dirty? "(modified)" : "");
     if (len > E.screencols)
     {       
         len = E.screencols;
@@ -727,6 +743,7 @@ void EditorOpen(const char* filename)
     }
     free(line);
     fclose(fp);
+    E.dirty = 0;
 }
 
 void InitEditor()
@@ -741,6 +758,7 @@ void InitEditor()
     E.filename = NULL;
     E.statusmsg[0] = '\0';
     E.statusmsg_time = 0;
+    E.dirty = 0;
 
     if (GetWindowSize(&E.screenrows, &E.screencols) == -1)
     {
