@@ -71,6 +71,7 @@ struct ABuf
 
 void EditorRefreshScreen();
 char* EditorPrompt(char* prompt);
+int EditorRowRxToCx(ERow* row, int rx);
 
 void AbAppend(struct ABuf* ab, const char* s, int len)
 {
@@ -160,6 +161,30 @@ char* EditorRowsToString(int* bufLen)
     }
 
     return buf;
+}
+
+void EditorFind()
+{
+    char* query = EditorPrompt("Search %s (ESC to cancel");
+    if (query == NULL)
+    {
+        return;
+    }
+
+    for (int i = 0; i < E.numrows; ++i)
+    {
+        ERow* row = &E.row[i];
+        char* match = strstr(row->render, query);
+        if (match)
+        {
+            E.cy = i;
+            E.cx = EditorRowRxToCx(row, match - row->render);
+            E.rowoff = E.numrows;
+            break;
+        }
+    }
+
+    free(query);
 }
 
 void EditorSave()
@@ -629,6 +654,9 @@ void EditorProcessKey()
         case CTRL_KEY('l'):
         case '\x1b':
             break;
+        case CTRL_KEY('f'):
+            EditorFind();
+            break;
         default:
             EditorInsertChar(c);
             break;
@@ -708,6 +736,28 @@ int EditorRowCxToRx(ERow* row, int cx)
     }
 
     return rx;
+}
+
+int EditorRowRxToCx(ERow* row, int rx)
+{
+    int cur_rx = 0;
+    
+    int cx = 0;
+    for (; cx < row->size; ++cx)
+    {
+        if (row->chars[cx] == '\t')
+        {
+            cur_rx += (KILO_TAB_STOP - 1) - (cur_rx % KILO_TAB_STOP);
+        }
+        cur_rx += 1;
+
+        if (cur_rx > rx)
+        {
+            return cx;
+        }
+    }
+
+    return cx;
 }
 
 void EditorScroll()
