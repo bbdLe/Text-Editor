@@ -543,6 +543,13 @@ char* EditorPrompt(char* prompt)
             free(buf);
             return NULL;
         }
+        else if (c == DEL_KEY || c == CTRL_KEY('h') || c == BACKSPACE)
+        {
+            if (buflen != 0)
+            {
+                buf[--buflen] = '\0';
+            }
+        }
     }
 }
 
