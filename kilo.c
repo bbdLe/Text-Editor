@@ -817,23 +817,32 @@ void EditorDrawRows(struct ABuf* aBuf)
 
             char* c = &E.row[filerow].render[E.coloff];
             unsigned char* hl = &E.row[filerow].hl[E.coloff];
+            int current_color = -1;
             for (int j = 0; j < len; ++j)
             {
                 if (hl[j] == HL_NORMAL)
                 {
-                    AbAppend(aBuf, "\x1b[39m", 5);
+                    if (current_color != -1)
+                    {
+                        current_color = -1;
+                        AbAppend(aBuf, "\x1b[39m", 5);
+                    }
                     AbAppend(aBuf, &c[j], 1);
                 }
                 else
                 {
                     int color = EditorSyntaxToColor(hl[j]);
-                    char buf[16];
-                    int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
-                    AbAppend(aBuf, buf, clen);
+                    if (current_color != color)
+                    {
+                        current_color = color;
+                        char buf[16];
+                        int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
+                        AbAppend(aBuf, buf, clen);
+                    }
                     AbAppend(aBuf, &c[j], 1);
                 }
-                AbAppend(aBuf, "\x1b[39m", 5);
             }
+            AbAppend(aBuf, "\x1b[39m", 5);
         }
 
         AbAppend(aBuf, "\x1b[K", 3);
