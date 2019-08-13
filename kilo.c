@@ -167,6 +167,11 @@ void EditorSave()
     if (E.filename == NULL)
     {
         E.filename = EditorPrompt("Save as : %s");
+        if (E.filename == NULL)
+        {
+            EditorSetStatusMessage("Save abort!");
+            return;
+        }
     }
 
     int len;
@@ -531,6 +536,12 @@ char* EditorPrompt(char* prompt)
             }
             buf[buflen++] = c;
             buf[buflen] = '\0';
+        }
+        else if (c == '\x1b')
+        {
+            EditorSetStatusMessage("");
+            free(buf);
+            return NULL;
         }
     }
 }
