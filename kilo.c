@@ -383,6 +383,34 @@ void EditorAppendRow(char* s, size_t len)
     E.dirty += 1;
 }
 
+void EditorFreeRow(ERow* row)
+{
+    free(row->chars);
+    free(row->render);
+}
+
+void EditorDelRow(int at)
+{
+    if (at < 0 || at >= E.numrows)
+    {
+        return;
+    }
+    EditorFreeRow(&E.row[at]);
+    memmove(&E.row[at], &E.row[at + 1], sizeof(ERow) * (E.numrows - at - 1));
+    E.numrows -= 1;
+    E.dirty += 1;
+}
+
+void EditorRowAppendString(ERow* row, char* s, size_t len)
+{
+    row->chars = (char*)realloc(row->chars, row->size + len + 1);
+    memcpy(&row->chars[row->size], s, len);
+    row->size += len;
+    row->chars[row->size] = '\0';
+    EditorUpdateRow(row);
+    E.dirty += 1;
+}
+
 void EditorRowInsertChar(ERow* row, int at, int c)
 {
     if (at < 0 || at > row->size)
@@ -407,6 +435,42 @@ void EditorInsertChar(int c)
 
     EditorRowInsertChar(&E.row[E.cy], E.cx, c);
     E.cx += 1;
+}
+
+void EditorRowDelChar(ERow* row, int at)
+{
+    if (at < 0 || at >= row->size) return;
+    memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+    row->size -= 1;
+    EditorUpdateRow(row);
+    E.dirty += 1;
+}
+
+void EditorDelChar()
+{
+    if (E.cy >= E.numrows)
+    {
+        return;
+    }
+
+    if (E.cy == 0 && E.cx == 0)
+    {
+        return;
+    }
+
+    ERow* row = &E.row[E.cy];
+    if (E.cx > 0)
+    {
+        EditorRowDelChar(row, E.cx - 1);
+        E.cx -= 1;
+    }
+    else
+    {
+        E.cx = E.row[E.cy - 1].size;
+        EditorRowAppendString(&E.row[E.cy - 1], row->chars, row->size);
+        EditorDelRow(E.cy);
+        E.cy -= 1;
+    }
 }
 
 void EditorProcessKey()
@@ -474,6 +538,11 @@ void EditorProcessKey()
         case BACKSPACE:
         case CTRL_KEY('h'):
         case DEL_KEY:
+            if (c == DEL_KEY)
+            {
+                EditorMoveKey(ARROW_RIGHT);
+            }
+            EditorDelChar();
             break;
 
         case CTRL_KEY('l'):
