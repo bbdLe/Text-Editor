@@ -94,6 +94,11 @@ int EditorSyntaxToColor(int hl)
     }
 }
 
+int is_separator(int c)
+{
+    return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
+}
+
 void AbAppend(struct ABuf* ab, const char* s, int len)
 {
     char* newBuf = (char*)(realloc(ab->b, ab->len + len));
@@ -459,12 +464,21 @@ void EditorUpdateSyntax(ERow* row)
     row->hl = (unsigned char*)realloc(row->hl, row->rsize);
     memset(row->hl, HL_NORMAL, row->rsize);
 
+    int prev_sep = 1;
+
     for (int i = 0; i < row->rsize; ++i)
     {
-        if (isdigit(row->render[i]))
+        char c = row->render[i];
+        unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
+
+        if (isdigit(c) && (prev_sep || prev_hl == HL_NUMBER))
         {
             row->hl[i] = HL_NUMBER;
+            prev_sep = 0;
+            continue;
         }
+
+        prev_sep = is_separator(c);
     }
 }
 
