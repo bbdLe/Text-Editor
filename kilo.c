@@ -69,6 +69,9 @@ struct ABuf
     int len;
 };
 
+void EditorRefreshScreen();
+char* EditorPrompt(char* prompt);
+
 void AbAppend(struct ABuf* ab, const char* s, int len)
 {
     char* newBuf = (char*)(realloc(ab->b, ab->len + len));
@@ -163,7 +166,7 @@ void EditorSave()
 {
     if (E.filename == NULL)
     {
-        return;
+        E.filename = EditorPrompt("Save as : %s");
     }
 
     int len;
@@ -366,21 +369,45 @@ void EditorUpdateRow(ERow* row)
     row->rsize = idx;
 }
 
-void EditorAppendRow(char* s, size_t len)
+void EditorInsertRow(int at, char* s, size_t len)
 {
+    if (at < 0 || at > E.numrows)
+    {
+        return;
+    }
     E.row = (ERow*)realloc(E.row, sizeof(ERow) * (E.numrows + 1));
+    memmove(&E.row[at + 1], &E.row[at], sizeof(ERow) * (E.numrows - at));
 
-    E.row[E.numrows].size = len;
-    E.row[E.numrows].chars = (char*)malloc(len + 1);
-    memcpy(E.row[E.numrows].chars, s, len);
-    E.row[E.numrows].chars[len] = '\0';
+    E.row[at].size = len;
+    E.row[at].chars = (char*)malloc(len + 1);
+    memcpy(E.row[at].chars, s, len);
+    E.row[at].chars[len] = '\0';
 
-    E.row[E.numrows].rsize = 0;
-    E.row[E.numrows].render = NULL;
-    EditorUpdateRow(&E.row[E.numrows]);
+    E.row[at].rsize = 0;
+    E.row[at].render = NULL;
+    EditorUpdateRow(&E.row[at]);
 
     E.numrows += 1;
     E.dirty += 1;
+}
+
+void EditorInsertNewLine()
+{
+    if (E.cx == 0)
+    {
+        EditorInsertRow(E.cy, "", 0);
+    }
+    else
+    {
+        ERow* row = &E.row[E.cy];
+        EditorInsertRow(E.cy + 1, &row->chars[E.cy], row->size - E.cx);
+        row = &E.row[E.cy];
+        row->size = E.cx;
+        row->chars[row->size] = '\0';
+        EditorUpdateRow(row);
+    }
+    E.cy += 1;
+    E.cx = 0;
 }
 
 void EditorFreeRow(ERow* row)
@@ -430,7 +457,7 @@ void EditorInsertChar(int c)
 {
     if (E.cy == E.numrows)
     {
-        EditorAppendRow("", 0);
+        EditorInsertRow(E.numrows, "", 0);
     }
 
     EditorRowInsertChar(&E.row[E.cy], E.cx, c);
@@ -473,6 +500,41 @@ void EditorDelChar()
     }
 }
 
+char* EditorPrompt(char* prompt)
+{
+    size_t bufsize = 128;
+    char* buf = (char*)malloc(bufsize);
+
+    size_t buflen = 0;
+    buf[0] = '\0';
+
+    while (1)
+    {
+        EditorSetStatusMessage(prompt, buf);
+        EditorRefreshScreen();
+
+        int c = EditorReadKey();
+        if (c == '\r')
+        {
+            if (buflen != 0)
+            {
+                EditorSetStatusMessage("");
+                return buf;
+            }
+        }
+        else if(!iscntrl(c) && c < 128)
+        {
+            if (buflen == bufsize - 1)
+            {
+                bufsize *= 2;
+                buf = (char*)realloc(buf, bufsize);
+            }
+            buf[buflen++] = c;
+            buf[buflen] = '\0';
+        }
+    }
+}
+
 void EditorProcessKey()
 {
     static int quit_times = KILO_QUIT_TIMES; 
@@ -481,6 +543,7 @@ void EditorProcessKey()
     switch (c)
     {
         case '\r':
+            EditorInsertNewLine();
             break;
         case CTRL_KEY('q'):
             if (E.dirty && quit_times > 0)
@@ -808,7 +871,7 @@ void EditorOpen(const char* filename)
         {
             linelen -= 1;
         }
-        EditorAppendRow(line, linelen);
+        EditorInsertRow(E.numrows, line, linelen);
     }
     free(line);
     fclose(fp);
@@ -835,7 +898,6 @@ void InitEditor()
     }
     E.screenrows -= 2;
 }
-
 
 int main(int argc, char** argv)
 {
