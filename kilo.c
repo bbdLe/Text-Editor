@@ -22,6 +22,7 @@
 #define KILO_QUIT_TIMES 3
 
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
+#define HL_HIGHLIGHT_STRINGS (1<<1)
 
 struct EditorSyntax
 {
@@ -36,7 +37,7 @@ struct EditorSyntax HLDB[] = {
     {
         "c",
         C_HL_extensions,
-        HL_HIGHLIGHT_NUMBERS
+        HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
     },
 };
 
@@ -59,6 +60,7 @@ enum EditorKey
 enum EditorHighlight
 {
     HL_NORMAL = 0,
+    HL_STRING,
     HL_NUMBER,
     HL_MATCH
 };
@@ -108,6 +110,8 @@ int EditorSyntaxToColor(int hl)
 {
     switch(hl)
     {
+        case HL_STRING:
+            return 35;
         case HL_NUMBER:
             return 31;
         case HL_MATCH:
@@ -494,11 +498,35 @@ void EditorUpdateSyntax(ERow* row)
     }
 
     int prev_sep = 1;
+    int in_string = 0;
 
     for (int i = 0; i < row->rsize; ++i)
     {
         char c = row->render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
+
+        if (E.syntax->flags & HL_HIGHLIGHT_STRINGS)
+        {
+            if (in_string)
+            {
+                row->hl[i] = HL_STRING;
+                if (c == in_string)
+                {
+                    in_string = 0;
+                }
+                prev_sep = 1;
+                continue;
+            }
+            else
+            {
+                if (c == '"' || c == '\'')
+                {
+                    in_string = c;
+                    row->hl[i] = HL_STRING;
+                    continue;
+                }
+            }
+        }
 
         if (E.syntax->flags & HL_HIGHLIGHT_NUMBERS)
         {
@@ -1183,6 +1211,12 @@ void EditorSelectSyntaxHighlight()
                 (!is_ext && strstr(E.filename, s->filematch[j])))
             {
                 E.syntax = s;
+
+                for (int n = 0; n < E.numrows; ++n)
+                {
+                    EditorUpdateRow(&E.row[n]);
+                }
+
                 return;
             }
 
