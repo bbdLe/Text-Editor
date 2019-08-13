@@ -510,6 +510,12 @@ void EditorUpdateSyntax(ERow* row)
             if (in_string)
             {
                 row->hl[i] = HL_STRING;
+                if (c == '\\' && i + 1 < row->rsize)
+                {
+                    row->hl[i + 1] = HL_STRING;
+                    i += 1;
+                    continue;
+                }
                 if (c == in_string)
                 {
                     in_string = 0;
