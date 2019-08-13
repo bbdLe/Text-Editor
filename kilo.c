@@ -779,7 +779,21 @@ void EditorDrawRows(struct ABuf* aBuf)
             {
                 len = E.screencols;
             }
-            AbAppend(aBuf, &E.row[filerow].render[E.coloff], len);
+
+            char* c = &E.row[filerow].render[E.coloff];
+            for (int j = 0; j < len; ++j)
+            {
+                if (isdigit(c[j]))
+                {
+                    AbAppend(aBuf, "\x1b[31m", 5);
+                    AbAppend(aBuf, &c[j], 1);
+                    AbAppend(aBuf, "\x1b[39m", 5);
+                }
+                else
+                {
+                    AbAppend(aBuf, &c[j], 1);
+                }
+            }
         }
 
         AbAppend(aBuf, "\x1b[K", 3);
