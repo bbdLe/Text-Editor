@@ -80,11 +80,13 @@ enum EditorHighlight
 
 typedef struct ERow
 {
+    int idx;
     int size;
     int rsize;
     char* chars;
     char* render;
     unsigned char* hl;
+    int hl_open_comment;
 } ERow;
 
 struct EditorConfig
@@ -118,6 +120,7 @@ void EditorRefreshScreen();
 char* EditorPrompt(char* prompt, void (*callback)(char*, int));
 int EditorRowRxToCx(ERow* row, int rx);
 void EditorSelectSyntaxHighlight();
+void EditorUpdateRow(ERow* row);
 
 int EditorSyntaxToColor(int hl)
 {
@@ -530,7 +533,7 @@ void EditorUpdateSyntax(ERow* row)
 
     int prev_sep = 1;
     int in_string = 0;
-    int in_comment = 0;
+    int in_comment = (row->idx > 0 && E.row[row->idx - 1].hl_open_comment);
 
     for (int i = 0; i < row->rsize; ++i)
     {
@@ -637,6 +640,11 @@ void EditorUpdateSyntax(ERow* row)
 
         prev_sep = is_separator(c);
     }
+
+    int changed = (row->hl_open_comment != in_comment);
+    row->hl_open_comment = in_comment;
+    if (changed && row->idx + 1 < E.numrows)
+        EditorUpdateRow(&E.row[row->idx + 1]);
 }
 
 void EditorUpdateRow(ERow* row)
@@ -682,7 +690,12 @@ void EditorInsertRow(int at, char* s, size_t len)
     }
     E.row = (ERow*)realloc(E.row, sizeof(ERow) * (E.numrows + 1));
     memmove(&E.row[at + 1], &E.row[at], sizeof(ERow) * (E.numrows - at));
+    for (int j = at + 1; j <= E.numrows; ++j)
+    {
+        E.row[j].idx += 1;
+    }
 
+    E.row[at].idx = at;
     E.row[at].size = len;
     E.row[at].chars = (char*)malloc(len + 1);
     memcpy(E.row[at].chars, s, len);
@@ -691,6 +704,7 @@ void EditorInsertRow(int at, char* s, size_t len)
     E.row[at].rsize = 0;
     E.row[at].render = NULL;
     E.row[at].hl = NULL;
+    E.row[at].hl_open_comment = 0;
     EditorUpdateRow(&E.row[at]);
 
     E.numrows += 1;
@@ -731,6 +745,10 @@ void EditorDelRow(int at)
     }
     EditorFreeRow(&E.row[at]);
     memmove(&E.row[at], &E.row[at + 1], sizeof(ERow) * (E.numrows - at - 1));
+    for (int j = at; j < E.numrows - 1; ++j)
+    {
+        E.row[j].idx -= 1;
+    }
     E.numrows -= 1;
     E.dirty += 1;
 }
