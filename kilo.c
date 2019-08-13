@@ -70,7 +70,7 @@ struct ABuf
 };
 
 void EditorRefreshScreen();
-char* EditorPrompt(char* prompt);
+char* EditorPrompt(char* prompt, void (*callback)(char*, int));
 int EditorRowRxToCx(ERow* row, int rx);
 
 void AbAppend(struct ABuf* ab, const char* s, int len)
@@ -163,9 +163,30 @@ char* EditorRowsToString(int* bufLen)
     return buf;
 }
 
+void EditorFindCallback(char* query, int key)
+{
+    if (key == '\r' || key == '\x1b')
+    {
+        return;
+    }
+
+    for (int i = 0; i < E.numrows; ++i)
+    {
+        ERow* row = &E.row[i];
+        char* match = strstr(row->render, query);
+        if (match)
+        {
+            E.cy = i;
+            E.cx = EditorRowRxToCx(row, match - row->render);
+            E.rowoff = E.numrows;
+            break;
+        }
+    }
+}
+
 void EditorFind()
 {
-    char* query = EditorPrompt("Search %s (ESC to cancel");
+    char* query = EditorPrompt("Search %s (ESC to cancel", EditorFindCallback);
     if (query == NULL)
     {
         return;
@@ -191,7 +212,7 @@ void EditorSave()
 {
     if (E.filename == NULL)
     {
-        E.filename = EditorPrompt("Save as : %s");
+        E.filename = EditorPrompt("Save as : %s", NULL);
         if (E.filename == NULL)
         {
             EditorSetStatusMessage("Save abort!");
@@ -530,7 +551,7 @@ void EditorDelChar()
     }
 }
 
-char* EditorPrompt(char* prompt)
+char* EditorPrompt(char* prompt, void (*callback)(char*, int))
 {
     size_t bufsize = 128;
     char* buf = (char*)malloc(bufsize);
@@ -549,6 +570,10 @@ char* EditorPrompt(char* prompt)
             if (buflen != 0)
             {
                 EditorSetStatusMessage("");
+                if (callback)
+                {
+                    callback(buf, c);
+                }
                 return buf;
             }
         }
@@ -565,6 +590,10 @@ char* EditorPrompt(char* prompt)
         else if (c == '\x1b')
         {
             EditorSetStatusMessage("");
+            if (callback)
+            {
+                callback(buf, c);
+            }
             free(buf);
             return NULL;
         }
@@ -574,6 +603,12 @@ char* EditorPrompt(char* prompt)
             {
                 buf[--buflen] = '\0';
             }
+        }
+
+
+        if (callback)
+        {
+            callback(buf, c);
         }
     }
 }
@@ -976,7 +1011,7 @@ int main(int argc, char** argv)
         EditorOpen(argv[1]);
     }
 
-    EditorSetStatusMessage("HELO: CTRL-Q = quit | CTRL-S = save");
+    EditorSetStatusMessage("HELO: CTRL-Q = quit | CTRL-S = save | CTRL-F = find");
 
     while (1)
     {
